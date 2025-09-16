@@ -1,7 +1,7 @@
 # Fitness Plan Generator – Full‑Stack AI Integration
 
 
-## ⚡ Quickstart for Students
+## ⚡ Quickstart
 Follow these 5 steps to get the project running quickly:
 
 1. **Clone & Install**
