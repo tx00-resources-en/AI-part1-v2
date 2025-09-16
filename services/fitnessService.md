@@ -1,144 +1,69 @@
-## **Step‑by‑Step Explanation**
+# Explanation of `generateFitnessPlan()`
 
-```js
-const model = require("./gemini"); // your existing Gemini API wrapper
-```
-- Imports your Gemini API wrapper function from `services/gemini.js` (or `gemini-v2.js` if you rename it).
-- This wrapper is responsible for actually calling the Gemini API and returning the AI’s response.
+This function is responsible for **communicating with the Gemini model** and asking it to generate a structured fitness plan. Let’s break it down step by step:
 
----
+1. **Dynamic Prompt Construction**  
+   - The function builds a text prompt that is sent to the Gemini model.  
+   - It uses the four inputs (`fitnessType`, `frequency`, `experience`, `goal`) and inserts them directly into the prompt.  
+   - This makes the request **personalized** for each user. For example, if someone says they are a beginner who wants to focus on strength training three times a week, those details are embedded in the instructions to the model.  
 
-```js
-async function generateFitnessPlan(fitnessType, frequency, experience, goal) {
-```
-- Defines an **async** function that will:
-  - Build a prompt for Gemini
-  - Call the Gemini API
-  - Return the AI’s generated text
+2. **Schema Requirements**  
+   - The prompt clearly defines the expected JSON structure:  
+     ```json
+     {
+       "workout": "...",
+       "diet": "...",
+       "recovery": "..."
+     }
+     ```  
+   - By giving the model an explicit schema, we reduce the chance of receiving unstructured or overly verbose text.  
 
----
+3. **Instructions for Clarity**  
+   - The prompt tells the model to keep each field short (1–3 sentences).  
+   - It also instructs the model not to add extra fields and to return only valid JSON.  
+   - These constraints are important because language models sometimes “drift” and add unnecessary details.  
 
-```js
-  const prompt = `
-    You are a professional fitness coach. Given the user's fitness experience, training frequency, and goal, generate a **structured fitness plan** in **JSON format**.
-  
-  ### **Schema Requirements**:
-  ...
-  `;
-```
-- This is your **prompt template**.
-- It:
-  - Tells Gemini to act as a professional fitness coach.
-  - Specifies **exact JSON schema requirements** so the output is structured.
-  - Injects the user’s input (`fitnessType`, `frequency`, `experience`, `goal`) into the prompt.
-  - Lists exactly what the plan should include (exercises, diet, recovery tips, warnings).
-  - Explicitly says “Return the response in the above JSON format” to encourage valid JSON output.
+4. **Calling the Model**  
+   - The function then calls `model(prompt)`, which sends the request to Gemini.  
+   - The result is captured in `result`.  
 
----
+5. **Debugging Option**  
+   - If the environment variable `DEBUG_GEMINI` is set to `true`, the raw response is logged.  
+   - This is useful for teaching: students can see exactly what the model returned before any cleaning or normalization.  
 
-```js
-  try {
-    const result  = await model(prompt);
-```
-- Calls your Gemini wrapper with the prompt.
-- `result` will be whatever your wrapper returns — in your current setup, that’s the **full Gemini API response object**.
+6. **Error Handling**  
+   - If something goes wrong (e.g., network error, invalid response), the function catches the error, logs it, and throws a new error with a clear message.  
+   - This prevents the application from silently failing.  
+
+7. **Return Value**  
+   - The function returns `result.text`, which is the raw text output from Gemini.  
+   - This raw text will later be passed to `normalizeFitnessPlan()` to ensure it matches the schema.  
 
 ---
 
-```js
-    // Log the raw Gemini output for debugging
-    console.log("🔍 Raw Gemini response:", result );
-```
-- Logs the raw Gemini response so you can inspect it when debugging.
-- This is useful for checking if `.text` exists or if the structure has changed.
+### Suggested Improvements
+
+1. **Stricter Output Handling**  
+   - Instead of returning `result.text` directly, you could attempt to parse it here.  
+   - If parsing fails, you could return a fallback object or pass an error message to the controller.  
+   - This would reduce the risk of invalid JSON reaching the next stage.  
+
+2. **Prompt Reusability**  
+   - Right now, the prompt is embedded directly in the function.  
+   - For larger projects, it’s often better to move prompts into a separate file (e.g., `prompts/fitnessPrompt.js`) so they can be reused, versioned, or tested independently.  
+
+3. **Input Validation**  
+   - Before sending the prompt, you could validate the inputs (`fitnessType`, `frequency`, `experience`, `goal`).  
+   - For example, ensure `frequency` is a number and not a string like `"three"`.  
+   - This prevents confusing or invalid instructions from being sent to the model.  
+
+4. **Localization / Language Support**  
+   - If your students or users might use different languages, you could add a parameter for language and instruct the model to respond in that language.  
+   - Example: *“Return the JSON in Finnish”*.  
 
 ---
 
-```js
-    return result.text; // still return it to the controller
-```
-- Returns only the `.text` property from the Gemini response to the controller.
-- This means the controller will get a plain string containing Gemini’s output.
+### Note  
 
----
+**Prompt design is programming in natural language**. Just like writing code, the way you phrase the instructions directly affects the output. The function is not just “calling an API” — it’s also **teaching the model how to behave**.  
 
-```js
-  } catch (err) {
-    console.error("Error in fitnessService:", err);
-    throw new Error("Failed to generate fitness plan");
-  }
-}
-```
-- If anything goes wrong (Gemini API error, network issue, etc.), logs the error and throws a new one.
-- This lets the controller send a proper HTTP error response.
-
----
-
-```js
-module.exports = { generateFitnessPlan };
-```
-- Exports the function so your controller can import and call it.
-
----
-
-## **Reflection — How to Improve**
-
-### 1. **Separate Prompt Building**
-Right now, the prompt is embedded directly in the function.  
-If you ever want to tweak it, you have to edit this file.  
-Instead:
-- Move the prompt into a separate helper function or template file.
-- This makes it easier to maintain and test.
-
-Example:
-```js
-function buildFitnessPrompt(fitnessType, frequency, experience, goal) {
-  return `You are a professional fitness coach...`; // your template
-}
-```
-
----
-
-### 2. **Debug Logging Control**
-Right now, `console.log` always runs.  
-Wrap it in a debug flag so it only logs when needed:
-```js
-if (process.env.DEBUG_GEMINI === "true") {
-  console.log("🔍 Raw Gemini response:", result);
-}
-```
-
----
-
-### 3. **Return Both Raw and Text**
-If you return both the raw object and the extracted text, you give the controller more flexibility:
-```js
-return { raw: result, text: result.text };
-```
-Then the controller can decide whether to use `.text` or inspect `.raw`.
-
----
-
-### 4. **Validate Inputs Early**
-Although the controller already validates inputs, adding a quick sanity check here can prevent accidental bad calls:
-```js
-if (!fitnessType || !frequency || !experience || !goal) {
-  throw new Error("Missing required parameters for fitness plan generation");
-}
-```
-
----
-
-### 5. **Handle Missing `.text` Gracefully**
-If `.text` is missing, return a clear error or fallback:
-```js
-if (!result?.text) {
-  throw new Error("Gemini did not return any text output");
-}
-```
-
----
-
-### 6. **Future‑Proof Prompt**
-Gemini sometimes ignores schema instructions.  
-You could add a **“If you cannot produce valid JSON, return an empty object”** clause to reduce parsing errors.

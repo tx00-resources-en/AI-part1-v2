@@ -14,8 +14,10 @@ async function generateText(req, res) {
     // Try to extract JSON from markdown fences
     const jsonMatch = rawResponse.match(/```json\s*([\s\S]*?)\s*```/);
     const jsonString = jsonMatch ? jsonMatch[1] : rawResponse;
-    console.log(jsonString);
-    
+    if (process.env.DEBUG_GEMINI === "true") {
+      console.log(jsonString);
+    }
+
 
     let parsedPlan;
     try {
@@ -33,4 +35,4 @@ async function generateText(req, res) {
   }
 }
 
-module.exports = generateText ;
+module.exports = generateText;

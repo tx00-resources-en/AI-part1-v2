@@ -18,16 +18,14 @@ const model = async (prompt) => {
       config: { temperature: 0.1 },
     });
 
-    // Log the entire raw object so we can see its shape
     if (process.env.DEBUG_GEMINI === "true") {
       console.log("🔍 FULL Gemini SDK response object:", JSON.stringify(response, null, 2));
-    }
 
-    // If the SDK has a .text convenience property, log it too
-    if (response?.text) {
-      console.log("✅ Gemini .text property");// console.log("✅ Gemini .text property:", response.text);
-    } else {
-      console.warn("⚠ No .text property found on Gemini response");
+      if (response?.text) {
+        console.log("✅ Gemini .text property:", response.text);
+      } else {
+        console.warn("⚠ No .text property found on Gemini response");
+      }
     }
 
     return response; // return the full object so service can do result.text
